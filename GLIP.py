@@ -5,7 +5,16 @@ import pandas
 # Main function calling all other functions in program
 def main():
     # Find Path & Filename for FCST File in Working Directory
-    fcst_path = GLIP_Functions.get_fcst_path(path)
+    fcst_files = GLIP_Functions.get_fcst_path(path)
+
+    if len(fcst_files) == 2:
+        nextday_fcst_path = fcst_files[0]
+        fcst_path = fcst_files[1]
+        fcst_file_count = 2
+
+    elif len(fcst_files) == 1:
+        fcst_path = fcst_files[1]
+        fcst_file_count = 1
 
     # Return a Pandas Dataframe containing the FutureGen Tab of FCST File
     future_gen_tab = GLIP_Functions.get_future_gen(fcst_path)
@@ -50,6 +59,6 @@ if __name__ == "__main__":
     translation_path = r'C:\GLIP\translation-table.csv'
     output_file = r'C:\GLIP\FMPP-Gen-Forecast.csv'
     output_list = []
-
+    fcst_file_count = 0
     # Call main function to begin program
     main()

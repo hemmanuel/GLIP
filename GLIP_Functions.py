@@ -5,12 +5,80 @@ import datetime
 
 # Find the file that begins with FCST, and return the location
 def get_fcst_path(working_directory):
-    fcst_location = ''
+    fcst_locations = []
+    tomorrow_files = []
+    today_files = []
+    today_date = datetime.datetime.today().date()
+    tomorrow_date = (datetime.datetime.today() + datetime.timedelta(days=1)).date()
+    # date_format = '%Y-%m-%d %H:%M:%S'
+
+    # Loop through each file in directory, return list of lists: [[FCST_07July2021.xlsx, 07-07-2021, 07-07-2021 08:00]]
     for file in os.listdir(working_directory):
         if os.path.isfile(os.path.join(working_directory, file)) and 'FCST' in file:
             fcst_location = working_directory + "\\" + file
+            fcst_timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(fcst_location))
+            fcst_date = get_fcst_date_from_filename(file)
+            fcst_locations.append([fcst_location, fcst_date, fcst_timestamp])
 
-    return fcst_location
+    # Search for FCST file for the next day, and populate a list with these files
+    for fcst_file in fcst_locations:
+        if fcst_file[1] == tomorrow_date:
+            # print("I found tomorrow's file! \n", fcst_file, '\n')
+            tomorrow_files.append(fcst_file)
+
+        if fcst_file[1] == today_date:
+            # print('\nNow I found todays file!\n', fcst_file)
+            today_files.append(fcst_file)
+
+    latest_nextday_fcst = get_latest_file(tomorrow_files)
+    latest_current_day_fcst = get_latest_file(today_files)
+    latest_fcst_overall = get_latest_file(fcst_locations)
+
+    # If there is at least one file for tomorrow, get the latest one, and then the latest file for today as well
+    if len(tomorrow_files) > 0:
+        return [latest_nextday_fcst, latest_current_day_fcst]
+
+    # If there are no files for tomorrow, but at least one for today, return the latest for today
+    elif len(today_files) > 0:
+        return [latest_current_day_fcst]
+
+    # If there are no FCST files for today nor tomorrow, print message, then use latest file
+    else:
+        print('Could not find FCST file for today nor tomorrow.  Proceeded to use latest FCST that I found: ',
+              latest_fcst_overall)
+
+        return latest_fcst_overall
+
+
+# Get the most recent file from a list of lists: [FCST_12July2021.xlsx,, 07-12-2021, 07-11-2021 13:34:20 (timestamp)]
+def get_latest_file(files):
+    max_timestamp = datetime.datetime(1990, 1, 1)
+    latest_file = files[0][0]
+    for file in files:
+        if file[2] > max_timestamp:
+            max_timestamp = file[2]
+            latest_file = file[0]
+
+    return latest_file
+
+
+# Parse the filename of FCST file, and return the date of fcst.  Ex: FCST_11July2021 returns 2021-07-11
+def get_fcst_date_from_filename(fcst_filename):
+    filename_format = 'FCST_%d%B%Y'
+    parsed_file = fcst_filename[:-5]
+
+    try:
+        file_date = datetime.datetime.strptime(parsed_file, filename_format).date()
+
+    except ValueError as v:
+        if len(v.args) > 0 and v.args[0].startswith('unconverted data remains: '):
+            parsed_file = parsed_file[:-(len(v.args[0]) - 26)]
+            file_date = datetime.datetime.strptime(parsed_file, filename_format).date()
+
+        else:
+            raise
+
+    return file_date
 
 
 # Read FCST file into Pandas, & create a dataframe with the future gen tab
@@ -136,9 +204,8 @@ def get_multiplier(template_row, translation_table):
 def transfer_data(template_row, fcst_row, translation_table):
     multiplier = get_multiplier(template_row, translation_table)
     for hour in range(24):
-        fcst_index = str(hour+1)
-        template_index = str(hour)
-        template_row[template_index] = round(fcst_row[fcst_index] * multiplier, 3)
+        index = str(hour+1)
+        template_row[index] = round(fcst_row[index] * multiplier, 3)
 
 
 # Update the date from rank (0-6) to actual date
