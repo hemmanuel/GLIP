@@ -213,3 +213,5 @@ def update_date(template_row, ranked_days):
     for day in ranked_days:
         if day[1] == template_row['Date']:
             template_row['Date'] = day[0]
+
+
