@@ -89,25 +89,25 @@ def get_future_gen(fcst_location):
     return future_gen_df
 
 
-# Ex Output:
-# [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit'...]
-def get_row_dicts(future_gen_df):
-    # Set the minimum date to 1/1/3000
-    min_date = datetime.datetime(3000, 1, 1).date()
-    date_format = '%m/%d/%Y'
-    ranked_days = []
-    unique_ranked_days = []
-
+# Go through each row in file and populate a list of dictionaries for each row, with the date ranked from today.
+def populate_row_dict(future_gen_df):
     row_list = []
 
-    # Go through each row in file and populate a list of dictionaries for each row, with the date ranked from today.
     for row_num, row in future_gen_df.iterrows():
         row_dict = row.to_dict()
         row_list.append(row_dict)
 
+    return row_list
+
+
+def rank_days(row_list, days):
+    date_format = '%m/%d/%Y'
+    min_date = datetime.datetime(3000, 1, 1).date()
+    ranked_days = []
+    unique_ranked_days = []
+
     # Get minimum date in FEM file
     for row in row_list:
-
         if isinstance(row['Date'], str):
             try:
                 date = datetime.datetime.strptime(str(row['Date']), date_format).date()
@@ -130,7 +130,7 @@ def get_row_dicts(future_gen_df):
             # Make sure that the date is in format MM/DD/YYYY
             try:
                 date = datetime.datetime.strptime(str(row['Date']), date_format).date()
-                day_rank = (date - min_date).days + 1
+                day_rank = (date - min_date).days + days
 
             except ValueError:
                 continue
@@ -144,7 +144,50 @@ def get_row_dicts(future_gen_df):
                 if day not in unique_ranked_days:
                     unique_ranked_days.append([date_string, day_rank])
 
-    return row_list, unique_ranked_days
+    return unique_ranked_days
+
+
+def fetch_previous_day(row_list):
+    day_zero_rows = []
+
+    for row in row_list:
+        try:
+            if row['Date'][1] == 0:
+                day_zero_rows.append(row)
+        except TypeError:
+            continue
+
+    return day_zero_rows
+
+
+# Ex Output:
+# [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit'...]
+def get_row_dicts(future_gen_tabs):
+    row_list = []
+    fcst_file_num = len(future_gen_tabs)
+
+    current_day_rows = populate_row_dict(future_gen_tabs[0])
+    current_day_ranks = rank_days(current_day_rows, 0)
+
+    if fcst_file_num == 2:
+        next_day_rows = populate_row_dict(future_gen_tabs[1])
+        next_day_ranks = rank_days(next_day_rows, 1)
+        day_zero_rows = fetch_previous_day(current_day_rows)
+
+        for row in next_day_rows:
+            row_list.append(row)
+
+        for row in day_zero_rows:
+            row_list.append(row)
+
+        next_day_ranks.append(current_day_ranks[0])
+
+        return row_list, next_day_ranks
+
+    elif fcst_file_num == 1:
+        row_list.append(current_day_rows)
+
+        return row_list, current_day_ranks
 
 
 # Takes a CSV File and returns a list of dictionaries for each row:
