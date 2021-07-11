@@ -7,8 +7,8 @@ def main():
     fcst_file_count = 0
     current_day_fcst_path = ''
     nextday_fcst_path = ''
-    next_day_future_gen_tab = ''
-    current_day_future_gen_tab = ''
+    next_day_future_gen_tab = None
+    current_day_future_gen_tab = None
 
     # Find Path & Filename for FCST File in Working Directory
     fcst_files = GLIP_Functions.get_fcst_path(path)
@@ -21,7 +21,7 @@ def main():
 
     # If only one FCST file was returned, then we only have today (or some other day).  Set variables and flag
     elif len(fcst_files) == 1:
-        current_day_fcst_path = fcst_files[1]
+        current_day_fcst_path = fcst_files[0]
         fcst_file_count = 1
 
     # Return a Pandas Dataframe containing the FutureGen Tab of FCST File for current day
@@ -33,7 +33,7 @@ def main():
 
     # Return a List of Dictionaries For Each Row in FCST FutureGen in Following Format:
     # [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit':]
-    fcst_rows, ranked_days = GLIP_Functions.get_row_dicts([current_day_future_gen_tab, next_day_future_gen_tab])
+    fcst_rows, ranked_days = GLIP_Functions.get_row_dicts(current_day_future_gen_tab, next_day_future_gen_tab)
 
     # Return a List of Dictionaries Containing Each Row in Translation Table in Following Format:
     # [{'FEM Name': 'CANE-2_CC', 'PSSE Name': 'CI#2 CT     13.800', 'Unit ID': 1, 'Multiplier': 0.643312102}, {FEM Na..]

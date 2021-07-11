@@ -53,7 +53,12 @@ def get_fcst_path(working_directory):
 # Get the most recent file from a list of lists: [FCST_12July2021.xlsx,, 07-12-2021, 07-11-2021 13:34:20 (timestamp)]
 def get_latest_file(files):
     max_timestamp = datetime.datetime(1990, 1, 1)
-    latest_file = files[0][0]
+
+    try:
+        latest_file = files[0][0]
+    except IndexError:
+        return 0
+
     for file in files:
         if file[2] > max_timestamp:
             max_timestamp = file[2]
@@ -93,9 +98,12 @@ def get_future_gen(fcst_location):
 def populate_row_dict(future_gen_df):
     row_list = []
 
-    for row_num, row in future_gen_df.iterrows():
-        row_dict = row.to_dict()
-        row_list.append(row_dict)
+    try:
+        for row_num, row in future_gen_df.iterrows():
+            row_dict = row.to_dict()
+            row_list.append(row_dict)
+    except AttributeError:
+        pass
 
     return row_list
 
@@ -162,15 +170,17 @@ def fetch_previous_day(row_list):
 
 # Ex Output:
 # [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit'...]
-def get_row_dicts(future_gen_tabs):
+def get_row_dicts(current_day, next_day):
     row_list = []
-    fcst_file_num = len(future_gen_tabs)
+    # fcst_file_num = len(future_gen_tabs)
 
-    current_day_rows = populate_row_dict(future_gen_tabs[0])
+    current_day_rows = populate_row_dict(current_day)
     current_day_ranks = rank_days(current_day_rows, 0)
+    # for tab in future_gen_tabs:
+    #     print(tab)
 
-    if fcst_file_num == 2:
-        next_day_rows = populate_row_dict(future_gen_tabs[1])
+    if current_day is not None and next_day is not None:
+        next_day_rows = populate_row_dict(next_day)
         next_day_ranks = rank_days(next_day_rows, 1)
         day_zero_rows = fetch_previous_day(current_day_rows)
 
@@ -184,8 +194,9 @@ def get_row_dicts(future_gen_tabs):
 
         return row_list, next_day_ranks
 
-    elif fcst_file_num == 1:
-        row_list.append(current_day_rows)
+    elif current_day is not None and next_day is None:
+        for row in current_day_rows:
+            row_list.append(row)
 
         return row_list, current_day_ranks
 
