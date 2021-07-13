@@ -108,13 +108,15 @@ def populate_row_dict(input_df):
     return row_list
 
 
+# Return a list of unique days in fcst file, ranked from 0-6. Also return the max date
 def rank_days(row_list, days):
     date_format = '%m/%d/%Y'
     min_date = datetime.datetime(3000, 1, 1).date()
+    max_date = datetime.datetime(1990, 1, 1).date()
     ranked_days = []
     unique_ranked_days = []
 
-    # Get minimum date in FEM file
+    # Get min and max dates in fcst file
     for row in row_list:
         if isinstance(row['Date'], str):
             try:
@@ -122,6 +124,9 @@ def rank_days(row_list, days):
 
                 if date < min_date:
                     min_date = date
+
+                if date > max_date:
+                    max_date = date
 
             except ValueError:
                 continue
@@ -152,7 +157,7 @@ def rank_days(row_list, days):
                 if day not in unique_ranked_days:
                     unique_ranked_days.append([date_string, day_rank])
 
-    return unique_ranked_days
+    return unique_ranked_days, max_date
 
 
 # Return a list of rows from current day FCST.
@@ -177,9 +182,42 @@ def fetch_previous_day(row_list, second_half_current_day_rows):
     return day_zero_rows
 
 
-def current_day_second_half(current_day_df):
+# If we don't have 6 days worth of data, copy the last day that we have into the rest of the days, until we have 6.
+def ensure_six_days(fcst_rows, ranked_days, max_day):
+    additional_rows = []
+    additional_days = []
+    max_day_string = max_day.strftime('%m/%d/%Y')
 
-    return 0
+    for i in range(7):
+        try:
+            ranked_days[i]
+
+        # If a day doesn't exist in forecast file, create a list with the remaining days required to complete 6
+        except IndexError:
+            day = datetime.datetime.strptime(str(ranked_days[i-1][0]), '%m/%d/%Y').date() + datetime.timedelta(days=1)
+            new_day = day.strftime('%m/%d/%Y')
+            new_day_rank = ranked_days[i-1][1] + 1
+            ranked_days.append([new_day, new_day_rank])
+            additional_days.append([new_day, new_day_rank])
+
+    # For each additional day required, go thru existing fcst days, and copy the max day for each unit for each day
+    for day in additional_days:
+        for row in fcst_rows:
+            try:
+                if row['Date'][0] == max_day_string:
+                    row_dict = dict(row)
+                    row_dict['Date'] = [day[0], day[1]]
+                    additional_rows.append(row_dict)
+
+            except TypeError:
+                continue
+
+    # Add the newly copied additional days to the final list
+    for row in additional_rows:
+        print(row)
+        fcst_rows.append(row)
+
+    return fcst_rows
 
 
 # Ex Output:
@@ -189,31 +227,40 @@ def get_row_dicts(current_day, next_day, second_half_current_day):
     # fcst_file_num = len(future_gen_tabs)
 
     current_day_rows = populate_row_dict(current_day)
-    current_day_ranks = rank_days(current_day_rows, 0)
+    current_day_ranks, current_day_max_day = rank_days(current_day_rows, 0)
     second_half_current_day_rows = populate_row_dict(second_half_current_day)
     # for tab in second_half_current_day_rows:
     #     print(tab)
 
+    # If both the next day and current day fcst files exist, populate appropriate lists
     if current_day is not None and next_day is not None:
+        # List of dicts for next-day file
         next_day_rows = populate_row_dict(next_day)
-        next_day_ranks = rank_days(next_day_rows, 1)
+
+        # Unique dates and ranks for next-day file, as well as max date
+        next_day_ranks, next_day_max_day = rank_days(next_day_rows, 1)
+
+        # Today's data from yesterday's file (including updating 2nd half of today with today's file)
         day_zero_rows = fetch_previous_day(current_day_rows, second_half_current_day_rows)
 
+        # Update final list with next-day and day-zero values
         for row in next_day_rows:
             row_list.append(row)
 
         for row in day_zero_rows:
             row_list.append(row)
 
+        # Populate list with dates ranks
         next_day_ranks.append(current_day_ranks[0])
 
-        return row_list, next_day_ranks
+        return row_list, next_day_ranks, next_day_max_day
 
+    # If only today's file exists, and not tomorrow's only use today's data
     elif current_day is not None and next_day is None:
         for row in current_day_rows:
             row_list.append(row)
 
-        return row_list, current_day_ranks
+        return row_list, current_day_ranks, current_day_max_day
 
 
 # Takes a CSV File and returns a list of dictionaries for each row:
@@ -232,6 +279,7 @@ def csv_to_dict_list(csv_path):
 # Check if the day (day 0 - day 6) match in the FEM FCST File and the Template File
 def check_date_match(fem_row, template_row, ranked_days):
     dates_match = 0
+    # print(ranked_days)
 
     for day in ranked_days:
         try:
@@ -282,5 +330,3 @@ def update_date(template_row, ranked_days):
     for day in ranked_days:
         if day[1] == template_row['Date']:
             template_row['Date'] = day[0]
-
-
