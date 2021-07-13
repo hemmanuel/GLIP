@@ -87,19 +87,19 @@ def get_fcst_date_from_filename(fcst_filename):
 
 
 # Read FCST file into Pandas, & create a dataframe with the future gen tab
-def get_future_gen(fcst_location):
+def get_df_from_excel(fcst_location, tab_name):
     fcst_df = pandas.ExcelFile(fcst_location)
-    future_gen_df = pandas.read_excel(fcst_df, "FutureGen", skiprows=3)
+    output_df = pandas.read_excel(fcst_df, tab_name, skiprows=3)
 
-    return future_gen_df
+    return output_df
 
 
 # Go through each row in file and populate a list of dictionaries for each row, with the date ranked from today.
-def populate_row_dict(future_gen_df):
+def populate_row_dict(input_df):
     row_list = []
 
     try:
-        for row_num, row in future_gen_df.iterrows():
+        for row_num, row in input_df.iterrows():
             row_dict = row.to_dict()
             row_list.append(row_dict)
     except AttributeError:
@@ -155,7 +155,8 @@ def rank_days(row_list, days):
     return unique_ranked_days
 
 
-def fetch_previous_day(row_list):
+# Return a list of rows from current day FCST.
+def fetch_previous_day(row_list, second_half_current_day_rows):
     day_zero_rows = []
 
     for row in row_list:
@@ -165,24 +166,38 @@ def fetch_previous_day(row_list):
         except TypeError:
             continue
 
+# Update day zero rows with second half of previous day data
+    for row in day_zero_rows:
+        for unit in second_half_current_day_rows:
+            if row['Unit'] == unit['Resource']:
+                for hour in range(13, 25):
+                    index = str(hour)
+                    row[index] = unit[index]
+
     return day_zero_rows
+
+
+def current_day_second_half(current_day_df):
+
+    return 0
 
 
 # Ex Output:
 # [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit'...]
-def get_row_dicts(current_day, next_day):
+def get_row_dicts(current_day, next_day, second_half_current_day):
     row_list = []
     # fcst_file_num = len(future_gen_tabs)
 
     current_day_rows = populate_row_dict(current_day)
     current_day_ranks = rank_days(current_day_rows, 0)
-    # for tab in future_gen_tabs:
+    second_half_current_day_rows = populate_row_dict(second_half_current_day)
+    # for tab in second_half_current_day_rows:
     #     print(tab)
 
     if current_day is not None and next_day is not None:
         next_day_rows = populate_row_dict(next_day)
         next_day_ranks = rank_days(next_day_rows, 1)
-        day_zero_rows = fetch_previous_day(current_day_rows)
+        day_zero_rows = fetch_previous_day(current_day_rows, second_half_current_day_rows)
 
         for row in next_day_rows:
             row_list.append(row)
