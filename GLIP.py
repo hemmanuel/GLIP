@@ -10,28 +10,27 @@ def main():
     next_day_future_gen_tab = None
     current_day_future_gen_tab = None
     second_half_of_current_day = None
+    latest_fcst_file = ''
 
     # Find Path & Filename for FCST File in Working Directory
-    fcst_files = GLIP_Functions.get_fcst_path(path)
+    fcst_files, fcst_days = GLIP_Functions.get_fcst_path(path)
+
+    # Return a Pandas Dataframe containing the FutureGen Tab of FCST File for current day (or latest day found)
+    if fcst_days == 1:
+        current_day_fcst_path = fcst_files[0]
+        current_day_future_gen_tab = GLIP_Functions.get_df_from_excel(current_day_fcst_path, "FutureGen")
 
     # If two FCST files were returned, then we have today and tomorrow.  Set variables and flag
-    if len(fcst_files) == 2:
+    if fcst_days == 2:
         nextday_fcst_path = fcst_files[0]
         current_day_fcst_path = fcst_files[1]
-        fcst_file_count = 2
-
-    # If only one FCST file was returned, then we only have today (or some other day).  Set variables and flag
-    elif len(fcst_files) == 1:
-        current_day_fcst_path = fcst_files[0]
-        fcst_file_count = 1
-
-    # Return a Pandas Dataframe containing the FutureGen Tab of FCST File for current day
-    current_day_future_gen_tab = GLIP_Functions.get_df_from_excel(current_day_fcst_path, "FutureGen")
-
-    # If next day FCST exists, return a Pandas Dataframe containing the FutureGen Tab of FCST File
-    if fcst_file_count == 2:
         next_day_future_gen_tab = GLIP_Functions.get_df_from_excel(nextday_fcst_path, "FutureGen")
-        # Return a Pandas Dataframe containing the "Second half of day prior" tab.
+        current_day_future_gen_tab = GLIP_Functions.get_df_from_excel(current_day_fcst_path, "FutureGen")
+        second_half_of_current_day = GLIP_Functions.get_df_from_excel(nextday_fcst_path, "Second half of day prior")
+
+    if fcst_days == 3:
+        nextday_fcst_path = fcst_files[0]
+        next_day_future_gen_tab = GLIP_Functions.get_df_from_excel(nextday_fcst_path, "FutureGen")
         second_half_of_current_day = GLIP_Functions.get_df_from_excel(nextday_fcst_path, "Second half of day prior")
 
     # Return a List of Dictionaries For Each Row in FCST FutureGen in Following Format:

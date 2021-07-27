@@ -35,19 +35,24 @@ def get_fcst_path(working_directory):
     latest_fcst_overall = get_latest_file(fcst_locations)
 
     # If there is at least one file for tomorrow, get the latest one, and then the latest file for today as well
-    if len(tomorrow_files) > 0:
-        return [latest_nextday_fcst, latest_current_day_fcst]
+    if len(tomorrow_files) > 0 and len(today_files) > 0:
+        return [latest_nextday_fcst, latest_current_day_fcst], 2
 
     # If there are no files for tomorrow, but at least one for today, return the latest for today
     elif len(today_files) > 0:
-        return [latest_current_day_fcst]
+        return [latest_current_day_fcst], 1
+
+    # If there is a file for tomorrow, but not for today
+    elif len(tomorrow_files) > 0:
+        print('Found FCST file for tomorrow: ', latest_nextday_fcst, '\nbut not for today')
+        return [latest_nextday_fcst], 3
 
     # If there are no FCST files for today nor tomorrow, print message, then use latest file
     else:
         print('Could not find FCST file for today nor tomorrow.  Proceeded to use latest FCST that I found: ',
               latest_fcst_overall)
 
-        return latest_fcst_overall
+        return [latest_fcst_overall], 1
 
 
 # Get the most recent file from a list of lists: [FCST_12July2021.xlsx,, 07-12-2021, 07-11-2021 13:34:20 (timestamp)]
@@ -214,7 +219,7 @@ def ensure_six_days(fcst_rows, ranked_days, max_day):
 
     # Add the newly copied additional days to the final list
     for row in additional_rows:
-        print(row)
+        # print(row)
         fcst_rows.append(row)
 
     return fcst_rows
@@ -224,16 +229,13 @@ def ensure_six_days(fcst_rows, ranked_days, max_day):
 # [{'Date':['06/23/2021, 1], 'Unit':'STN-1', '1':'145', '2':'157', '3':'160'...}, {'Date':['06/24/2021, 2], 'Unit'...]
 def get_row_dicts(current_day, next_day, second_half_current_day):
     row_list = []
-    # fcst_file_num = len(future_gen_tabs)
-
-    current_day_rows = populate_row_dict(current_day)
-    current_day_ranks, current_day_max_day = rank_days(current_day_rows, 0)
-    second_half_current_day_rows = populate_row_dict(second_half_current_day)
-    # for tab in second_half_current_day_rows:
-    #     print(tab)
 
     # If both the next day and current day fcst files exist, populate appropriate lists
     if current_day is not None and next_day is not None:
+        current_day_rows = populate_row_dict(current_day)
+        current_day_ranks, current_day_max_day = rank_days(current_day_rows, 0)
+        second_half_current_day_rows = populate_row_dict(second_half_current_day)
+
         # List of dicts for next-day file
         next_day_rows = populate_row_dict(next_day)
 
@@ -257,10 +259,22 @@ def get_row_dicts(current_day, next_day, second_half_current_day):
 
     # If only today's file exists, and not tomorrow's only use today's data
     elif current_day is not None and next_day is None:
+        current_day_rows = populate_row_dict(current_day)
+        current_day_ranks, current_day_max_day = rank_days(current_day_rows, 0)
+
         for row in current_day_rows:
             row_list.append(row)
 
         return row_list, current_day_ranks, current_day_max_day
+
+    elif current_day is None and next_day is not None:
+        next_day_rows = populate_row_dict(next_day)
+        next_day_ranks, next_day_max_day = rank_days(next_day_rows, 1)
+
+        for row in next_day_rows:
+            row_list.append(row)
+
+        return row_list, next_day_ranks, next_day_max_day
 
 
 # Takes a CSV File and returns a list of dictionaries for each row:
@@ -322,7 +336,8 @@ def transfer_data(template_row, fcst_row, translation_table):
     multiplier = get_multiplier(template_row, translation_table)
     for hour in range(24):
         index = str(hour+1)
-        template_row[index] = round(fcst_row[index] * multiplier, 3)
+        if fcst_row[index] > 0:
+            template_row[index] = round(fcst_row[index] * multiplier, 3)
 
 
 # Update the date from rank (0-6) to actual date
