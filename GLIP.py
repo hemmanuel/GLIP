@@ -13,7 +13,7 @@ def main():
     latest_fcst_file = ''
 
     # Find Path & Filename for FCST File in Working Directory
-    fcst_files, fcst_days = GLIP_Functions.get_fcst_path(path)
+    fcst_files, fcst_days = GLIP_Functions.get_fcst_path(fcst_path)
 
     # Return a Pandas Dataframe containing the FutureGen Tab of FCST File for current day (or latest day found)
     if fcst_days == 1:
@@ -47,7 +47,7 @@ def main():
 
     # Return a List of Dictionaries Containing Each Row in Output Template File in Following Format: (nan = null)
     # [{'Date': 0, 'Unit': 'CI#2 CT 13.800', 'Unit-ID': 1, '0': nan, '1': nan, '2': nan, '3': nan,...]
-    output_template = GLIP_Functions.csv_to_dict_list(output_template_path)
+    output_template = GLIP_Functions.csv_to_dict_list(template_path)
 
     # For each row in Template file, loop through each row in FCST file.  If day and unit matches update output file
     for template_row in output_template:
@@ -73,10 +73,10 @@ def main():
 
 # Initialize global variables and call main function
 if __name__ == "__main__":
-    path = r'C:\GLIP'
-    output_template_path = r'C:\GLIP\FMPP-GenData-TEMPLATE.csv'
-    translation_path = r'C:\GLIP\translation-table.csv'
-    output_file = r'C:\GLIP\FMPP-Gen-Forecast.csv'
+    fcst_path = r'C:\GLIP\FCST'
+    template_path = r'C:\GLIP\Input Files\FMPP-GenData-TEMPLATE.csv'
+    translation_path = r'C:\GLIP\Input Files\translation-table.csv'
+    output_file = r'C:\GLIP\Output\GENHOURLY_FMPP.csv'
     output_list = []
     # Call main function to begin program
     main()
